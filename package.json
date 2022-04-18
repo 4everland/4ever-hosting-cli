@@ -15,5 +15,9 @@
         "multipipe": "^4.0.0",
         "ora": "^1.3.0"
     },
-    "license": "MIT"
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/4everland/4ever-hosting-cli.git"
+    }
 }

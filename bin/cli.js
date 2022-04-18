@@ -13,8 +13,8 @@ const archiver = require("archiver");
 const FormData = require("form-data");
 let hostingConfig = { token: "", projectId: "" };
 try {
-  fs.accessSync(currentDir + "/hostingConfig.json");
-  hostingConfig = require(currentDir + "/hostingConfig");
+  fs.accessSync(currentDir + "/.hostingConfig.json");
+  hostingConfig = require(currentDir + "/.hostingConfig");
 } catch (err) {}
 let Token = hostingConfig.token;
 let ProjectId = hostingConfig.projectId;
@@ -100,7 +100,7 @@ function addJson(data) {
   let jsonData = hostingConfig || {};
   jsonData = { ...jsonData, ...data };
   let text = JSON.stringify(jsonData);
-  let file = path.join(currentDir, "hostingConfig.json");
+  let file = path.join(currentDir, ".hostingConfig.json");
   try {
     fs.writeFileSync(file, text);
   } catch {
@@ -248,7 +248,7 @@ function zipProject(dirPath) {
     return;
   }
   // create a file to stream archive data to.
-  const output = fs.createWriteStream(__dirname + "/hostingDeploy.zip");
+  const output = fs.createWriteStream(dirPath + "/hostingDeploy.zip");
   const archive = archiver("zip", {
     zlib: { level: 9 }, // Sets the compression level.
   });
@@ -256,7 +256,7 @@ function zipProject(dirPath) {
   // listen for all archive data to be written
   // 'close' event is fired only when a file descriptor is involved
   output.on("close", function () {
-    deployProject(__dirname + "/hostingDeploy.zip");
+    deployProject(dirPath + "/hostingDeploy.zip");
   });
 
   // This event is fired when the data source is drained no matter what was the data source.
@@ -301,9 +301,8 @@ function deployProject(filePath) {
   spinner.start("uploading...");
   instance
     .post(`/deploy`, data, {
-      onUploadProgress: (e) => {
-        let pre = Math.floor((e.loaded / e.total) * 100);
-        console.log(pre);
+      onUploadProgress: (progressEvent) => {
+        console.log(progressEvent);
       },
       headers: {
         "Content-Type": `multipart/form-data; boundary=${data._boundary}`,
