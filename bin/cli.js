@@ -103,7 +103,7 @@ function addJson(data) {
   let file = path.join(currentDir, ".hostingConfig.json");
   try {
     fs.writeFileSync(file, text);
-  } catch {
+  } catch (err) {
     spinner.fail(chalk.red(err));
   }
 }
