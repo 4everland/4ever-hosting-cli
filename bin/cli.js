@@ -12,6 +12,7 @@ const currentDir = path.resolve("./");
 const archiver = require("archiver");
 const FormData = require("form-data");
 let hostingConfig = { token: "", projectId: "" };
+const defaultOutPath = "./dist";
 try {
   fs.accessSync(currentDir + "/.hostingConfig.json");
   hostingConfig = require(currentDir + "/.hostingConfig");
@@ -42,29 +43,39 @@ program
 program
   .command("deploy")
   .description("deploy")
+  .option("-c, --with-config", 'Deploy with hostingConfig.json file')
+  .option("-p, --out-path <path>", 'Select out path directory to deploy', defaultOutPath)
   .action((arg, value) => {
     if (Token) {
-      inquirer
-        .prompt([
-          {
-            type: "list",
-            message: "Please select the project you want to deploy",
-            name: "type",
-            prefix: "****",
-            suffix: "****",
-            choices: [
-              { name: "Create a new project", value: 1 },
-              { name: "Select an existing project", value: 2 },
-            ],
-          },
-        ])
-        .then((answer) => {
-          if (answer.type == 1) {
-            createProject();
-          } else {
-            chooseProject();
-          }
-        });
+      if(arg.withConfig) {
+        if(ProjectId){
+          zipProject(arg.outPath);
+        } else {
+          spinner.fail(chalk.red("Please enquire projectId in hostingConfig.json file"));
+        }
+      } else {
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              message: "Please select the project you want to deploy",
+              name: "type",
+              prefix: "****",
+              suffix: "****",
+              choices: [
+                { name: "Create a new project", value: 1 },
+                { name: "Select an existing project", value: 2 },
+              ],
+            },
+          ])
+          .then((answer) => {
+            if (answer.type == 1) {
+              createProject();
+            } else {
+              chooseProject();
+            }
+          });
+      }
     } else {
       spinner.fail(chalk.red("Please login first"));
     }
@@ -234,7 +245,7 @@ function enterDirectory() {
         type: "input",
         message: "Please enter the output path for your project:",
         name: "outPath",
-        default: "./dist",
+        default: defaultOutPath,
       },
     ])
     .then((answer) => {
