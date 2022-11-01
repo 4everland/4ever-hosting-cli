@@ -20,6 +20,7 @@ let Token = hostingConfig.token;
 let ProjectId = hostingConfig.projectId;
 const instance = axios.create({
   baseURL: "https://cli-api.4everland.org/",
+  // baseURL: "https://cli.foreverland.xyz/",
   headers: { token: Token },
   maxBodyLength: Infinity,
 });
@@ -152,31 +153,51 @@ function createProject() {
         );
         return;
       }
-
-      spinner.start("Creating...");
-      let data = new FormData();
-      data.append("name", answer.name);
-      instance
-        .post("/project", data, {
-          headers: {
-            "Content-Type": `multipart/form-data; boundary=${data._boundary}`,
+      inquirer
+        .prompt([
+          {
+            type: "list",
+            message: "Which platform will you deploy on?",
+            name: "type",
+            prefix: "****",
+            suffix: "****",
+            choices: [
+              { name: "IPFS", value: "IPFS" },
+              { name: "Internet Computer", value: "IC" },
+              { name: "Arweave", value: "AR" },
+            ],
           },
-        })
-        .then((res) => {
-          if (res.data.code == 200) {
-            spinner.succeed(
-              chalk.green(`You successfully created new project`)
-            );
-            answer.projectId = res.data.content.projectId;
-            ProjectId = res.data.content.projectId;
-            addJson(answer);
-            enterDirectory();
-          } else {
-            spinner.fail(chalk.red("Failed to create \n" + res.data.message));
-          }
-        })
-        .catch((error) => {
-          spinner.fail(chalk.red(error));
+        ])
+        .then((platform) => {
+          let type = platform.type;
+          spinner.start("Creating...");
+          let data = new FormData();
+          data.append("name", answer.name);
+          data.append("platform", type);
+          instance
+            .post("/project", data, {
+              headers: {
+                "Content-Type": `multipart/form-data; boundary=${data._boundary}`,
+              },
+            })
+            .then((res) => {
+              if (res.data.code == 200) {
+                spinner.succeed(
+                  chalk.green(`You successfully created new project`)
+                );
+                answer.projectId = res.data.content.projectId;
+                ProjectId = res.data.content.projectId;
+                addJson(answer);
+                enterDirectory();
+              } else {
+                spinner.fail(
+                  chalk.red("Failed to create \n" + res.data.message)
+                );
+              }
+            })
+            .catch((error) => {
+              spinner.fail(chalk.red(error));
+            });
         });
     });
 }
