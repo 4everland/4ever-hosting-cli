@@ -1,12 +1,12 @@
 {
     "name": "@4everland/hosting-cli",
-    "version": "1.0.4",
+    "version": "1.0.7",
     "description": "command line tool for 4everland-hosting",
     "bin": {
         "4ever-hosting": "/bin/cli.js"
     },
     "scripts": {
-        "update": "npm publish "
+        "update": "npm publish"
     },
     "dependencies": {
         "archiver": "^5.3.0",

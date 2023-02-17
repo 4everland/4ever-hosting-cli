@@ -104,3 +104,5 @@ dist
 .tern-port
 
 .hostingConfig.json
+.hostingConfig.test.json
+.hostingConfig.prod.json

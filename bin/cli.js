@@ -24,6 +24,12 @@ const instance = axios.create({
   headers: { token: Token },
   maxBodyLength: Infinity,
 });
+
+const platformObj = {
+  ipfs: "IPFS",
+  ic: "IC",
+  ar: "AR",
+};
 /**
  * version
  */
@@ -43,35 +49,105 @@ program
 program
   .command("deploy")
   .description("deploy")
+  .option("-ipfs, --ipfs", "ipfs")
+  .option("-ic, --ic", "ic")
+  .option("-ar, --ar", "ar")
   .action((arg, value) => {
     if (Token) {
-      inquirer
-        .prompt([
-          {
-            type: "list",
-            message: "Please select the project you want to deploy",
-            name: "type",
-            prefix: "****",
-            suffix: "****",
-            choices: [
-              { name: "Create a new project", value: 1 },
-              { name: "Select an existing project", value: 2 },
-            ],
-          },
-        ])
-        .then((answer) => {
-          if (answer.type == 1) {
-            createProject();
-          } else {
-            chooseProject();
-          }
-        });
+      if (Object.keys(arg).length !== 0) {
+        createProject(arg);
+      } else {
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              message: "Please select the project you want to deploy",
+              name: "type",
+              prefix: "****",
+              suffix: "****",
+              choices: [
+                { name: "Create a new project", value: 1 },
+                { name: "Select an existing project", value: 2 },
+              ],
+            },
+          ])
+          .then((answer) => {
+            if (answer.type == 1) {
+              createProject();
+            } else {
+              chooseProject();
+            }
+          });
+      }
     } else {
       spinner.fail(chalk.red("Please login first"));
     }
   });
 /**
- * deploy
+ * cid
+ */
+program
+  .command("cid <cid>")
+  .description("deploy by cid")
+  .option("-ipfs, --ipfs", "ipfs")
+  .option("-ic, --ic", "ic")
+  .option("-ar, --ar", "ar")
+  .action((cid, arg, value) => {
+    if (Token) {
+      if (cid) {
+        const cidStart = cid.substring(0, 6);
+        if (cidStart == "/ipfs/") {
+          cid = cid;
+        } else {
+          cid = "/ipfs/" + cid;
+        }
+      } else {
+        spinner.fail(chalk.red("Please enter cid"));
+      }
+
+      if (Object.keys(arg).length !== 0) {
+        createProject(arg, cid);
+      } else {
+        createProject(null, cid);
+      }
+    } else {
+      spinner.fail(chalk.red("Please login first"));
+    }
+  });
+
+/**
+ * ipns
+ */
+program
+  .command("ipns <ipns>")
+  .description("deploy by ipns")
+  .option("-ipfs, --ipfs", "ipfs")
+  .option("-ic, --ic", "ic")
+  .option("-ar, --ar", "ar")
+  .action((ipns, arg, value) => {
+    if (Token) {
+      if (ipns) {
+        const ipnsStart = ipns.substring(0, 6);
+        if (ipnsStart == "/ipns/") {
+          ipns = ipns;
+        } else {
+          ipns = "/ipns/" + ipns;
+        }
+      } else {
+        spinner.fail(chalk.red("Please enter ipns"));
+      }
+      if (Object.keys(arg).length !== 0) {
+        createProject(arg, ipns);
+      } else {
+        createProject(null, ipns);
+      }
+    } else {
+      spinner.fail(chalk.red("Please login first"));
+    }
+  });
+
+/**
+ * domain
  */
 program
   .command("domain")
@@ -90,6 +166,20 @@ program
       if (arg.check) {
         checkDomain();
       }
+    } else {
+      spinner.fail(chalk.red("Please login first"));
+    }
+  });
+
+/**
+ * get IPNS
+ */
+program
+  .command("getipns")
+  .description("getipns")
+  .action((arg, value) => {
+    if (Token) {
+      getIpns();
     } else {
       spinner.fail(chalk.red("Please login first"));
     }
@@ -136,7 +226,7 @@ function login() {
     });
 }
 
-function createProject() {
+function createProject(arg, cid) {
   inquirer
     .prompt([
       {
@@ -153,52 +243,85 @@ function createProject() {
         );
         return;
       }
-      inquirer
+      if (arg) {
+        const platform = platformObj[Object.keys(arg)[0]];
+        sendCreateProject(platform, answer, cid);
+      } else {
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              message: "Which platform will you deploy on?",
+              name: "type",
+              prefix: "****",
+              suffix: "****",
+              choices: [
+                { name: "IPFS", value: "IPFS" },
+                { name: "Internet Computer", value: "IC" },
+                { name: "Arweave", value: "AR" },
+              ],
+            },
+          ])
+          .then((platform) => {
+            sendCreateProject(platform.type, answer, cid);
+          });
+      }
+    });
+}
+
+async function sendCreateProject(platform, answer, cid) {
+  let type = platform;
+  let data = new FormData();
+  data.append("name", answer.name);
+  data.append("platform", type);
+  if (cid) {
+    const cidStart = cid.substring(0, 6);
+    if (cidStart == "/ipfs/") {
+      data.append("deployType", "CID");
+    } else {
+      await inquirer
         .prompt([
           {
-            type: "list",
-            message: "Which platform will you deploy on?",
-            name: "type",
-            prefix: "****",
-            suffix: "****",
-            choices: [
-              { name: "IPFS", value: "IPFS" },
-              { name: "Internet Computer", value: "IC" },
-              { name: "Arweave", value: "AR" },
-            ],
+            name: "ipnsAuto",
+            type: "confirm",
+            message:
+              "Enable automatic update deployment when a CID update is detected?",
+            default: false,
           },
         ])
-        .then((platform) => {
-          let type = platform.type;
-          spinner.start("Creating...");
-          let data = new FormData();
-          data.append("name", answer.name);
-          data.append("platform", type);
-          instance
-            .post("/project", data, {
-              headers: {
-                "Content-Type": `multipart/form-data; boundary=${data._boundary}`,
-              },
-            })
-            .then((res) => {
-              if (res.data.code == 200) {
-                spinner.succeed(
-                  chalk.green(`You successfully created new project`)
-                );
-                answer.projectId = res.data.content.projectId;
-                ProjectId = res.data.content.projectId;
-                addJson(answer);
-                enterDirectory();
-              } else {
-                spinner.fail(
-                  chalk.red("Failed to create \n" + res.data.message)
-                );
-              }
-            })
-            .catch((error) => {
-              spinner.fail(chalk.red(error));
-            });
+        .then((res) => {
+          if (res.ipnsAuto) {
+            data.append("ipnsAuto", "true");
+          }
         });
+      data.append("deployType", "IPNS");
+    }
+    data.append("ipfsPath", cid);
+  }
+  spinner.start("Creating...");
+  instance
+    .post("/project", data, {
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${data._boundary}`,
+      },
+    })
+    .then((res) => {
+      if (res.data.code == 200) {
+        spinner.succeed(chalk.green(`You successfully created new project`));
+        answer.projectId = res.data.content.projectId;
+        ProjectId = res.data.content.projectId;
+        addJson(answer);
+        if (cid) {
+          deployCidProject(ProjectId);
+        } else {
+          enterDirectory();
+        }
+      } else {
+        spinner.fail(chalk.red("Failed to create \n" + res.data.message));
+      }
+    })
+    .catch((error) => {
+      spinner.fail(chalk.red(error));
     });
 }
 
@@ -260,6 +383,27 @@ function enterDirectory() {
     ])
     .then((answer) => {
       zipProject(answer.outPath);
+    });
+}
+
+function deployCidProject(projectId) {
+  let data = new FormData();
+  data.append("projectId", projectId);
+  instance
+    .post("/deploy/cid", data, {
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${data._boundary}`,
+      },
+    })
+    .then((res) => {
+      if (res.data.code == 200) {
+        // spinner.succeed(chalk.green(`You successfully`));
+      } else {
+        spinner.fail(chalk.red(res.data.message));
+      }
+    })
+    .catch((error) => {
+      spinner.fail(chalk.red(error));
     });
 }
 
@@ -414,6 +558,20 @@ function sendDomain(domainId) {
       } else {
         spinner.fail(chalk.red(`Invalid Configuration`));
       }
+    } else {
+      spinner.fail(chalk.red(res.data.message));
+    }
+  });
+}
+
+function getIpns() {
+  if (!ProjectId) {
+    spinner.fail(chalk.red(`The project id is null`));
+    return;
+  }
+  instance.get(`/project/${ProjectId}/ipns`).then((res) => {
+    if (res.data.code == 200) {
+      console.log(res.data.content.reportId);
     } else {
       spinner.fail(chalk.red(res.data.message));
     }
