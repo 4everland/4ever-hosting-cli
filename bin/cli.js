@@ -185,6 +185,20 @@ program
     }
   });
 
+/**
+ * update IPNS
+ */
+program
+  .command("update ipns")
+  .description("update ipns")
+  .action((arg, value) => {
+    if (Token) {
+      updateIpns();
+    } else {
+      spinner.fail(chalk.red("Please login first"));
+    }
+  });
+
 program.parse(process.argv);
 
 function addJson(data) {
@@ -413,7 +427,7 @@ function zipProject(dirPath) {
     return;
   }
   // create a file to stream archive data to.
-  const output = fs.createWriteStream(dirPath + "/hostingDeploy.zip");
+  const output = fs.createWriteStream("./hostingDeploy.zip");
   const archive = archiver("zip", {
     zlib: { level: 9 }, // Sets the compression level.
   });
@@ -421,7 +435,7 @@ function zipProject(dirPath) {
   // listen for all archive data to be written
   // 'close' event is fired only when a file descriptor is involved
   output.on("close", function () {
-    deployProject(dirPath + "/hostingDeploy.zip");
+    deployProject("./hostingDeploy.zip");
   });
 
   // This event is fired when the data source is drained no matter what was the data source.
@@ -576,4 +590,61 @@ function getIpns() {
       spinner.fail(chalk.red(res.data.message));
     }
   });
+}
+
+async function updateIpns() {
+  getIpnsList();
+}
+
+async function getIpnsList() {
+  spinner.start("Loading...");
+  instance
+    .get("/ipns/projects?size=50")
+    .then((res) => {
+      if (res.data.code == 200) {
+        const count = res.data.content.count
+        if (count == 0) {
+          spinner.fail(chalk.red("no ipns project"));
+          return;
+        }
+        let projectList = res.data.content.list;
+        spinner.succeed(chalk.green(`Loaded successfully`));
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              message: "Please select the project you want to update",
+              name: "name",
+              prefix: "****",
+              suffix: "****",
+              choices() {
+                let Arr = [];
+                projectList.forEach((element) => {
+                  let Obj = {};
+                  Obj.name = element.name;
+                  Obj.value = element.name;
+                  Arr.push(Obj);
+                });
+                return Arr;
+              },
+            },
+          ])
+          .then((answer) => {
+            instance
+              .post(`/ipns/resolve?projectName=${answer.name}`)
+              .then((res) => {
+                if (res.data.code == 200) {
+                  spinner.succeed(chalk.green(`Updated successfully`));
+                } else {
+                  spinner.fail(chalk.red(res.data.message));
+                }
+              });
+          });
+      } else {
+        spinner.fail(chalk.red("Load failed \n" + res.data.message));
+      }
+    })
+    .catch((error) => {
+      spinner.fail(chalk.red(error));
+    });
 }
