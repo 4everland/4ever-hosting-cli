@@ -29,6 +29,7 @@ const platformObj = {
   ipfs: "IPFS",
   ic: "IC",
   ar: "AR",
+  gnfd: "GREENFIELD",
 };
 /**
  * version
@@ -52,6 +53,7 @@ program
   .option("-ipfs, --ipfs", "ipfs")
   .option("-ic, --ic", "ic")
   .option("-ar, --ar", "ar")
+  .option("-gnfd, --gnfd", "Greenfield")
   .action((arg, value) => {
     if (Token) {
       if (Object.keys(arg).length !== 0) {
@@ -92,6 +94,7 @@ program
   .option("-ipfs, --ipfs", "ipfs")
   .option("-ic, --ic", "ic")
   .option("-ar, --ar", "ar")
+  .option("-gnfd, --gnfd", "Greenfield")
   .action((cid, arg, value) => {
     if (Token) {
       if (cid) {
@@ -124,6 +127,7 @@ program
   .option("-ipfs, --ipfs", "ipfs")
   .option("-ic, --ic", "ic")
   .option("-ar, --ar", "ar")
+  .option("-gnfd, --gnfd", "Greenfield")
   .action((ipns, arg, value) => {
     if (Token) {
       if (ipns) {
@@ -273,6 +277,7 @@ function createProject(arg, cid) {
                 { name: "IPFS", value: "IPFS" },
                 { name: "Internet Computer", value: "IC" },
                 { name: "Arweave", value: "AR" },
+                { name: "Greenfield", value: "GREENFIELD" },
               ],
             },
           ])
@@ -602,7 +607,7 @@ async function getIpnsList() {
     .get("/ipns/projects?size=50")
     .then((res) => {
       if (res.data.code == 200) {
-        const count = res.data.content.count
+        const count = res.data.content.count;
         if (count == 0) {
           spinner.fail(chalk.red("no ipns project"));
           return;
